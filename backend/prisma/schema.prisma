@@ -1,0 +1,87 @@
+// Prisma Schema for Road Condition Reporting App
+// Database: SQLite
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// User model - supports both regular users and admins
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  password     String
+  name         String
+  phone        String?
+  role         String   @default("USER") // USER or ADMIN
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  complaints          Complaint[]
+  passwordResetTokens PasswordResetToken[]
+
+  @@index([email])
+  @@index([role])
+}
+
+// Complaint model - road issue reports
+model Complaint {
+  id          String   @id @default(uuid())
+  complaintId String   @unique // Human-readable ID like RC-20260423-0001
+  category    String   // One of the fixed categories
+  title       String?  // Optional issue title
+  description String
+  address     String   // Manual address input
+  status      String   @default("Submitted") // Complaint status
+  adminRemarks String?  // Admin remarks/notes
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  images ComplaintImage[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([category])
+  @@index([createdAt])
+}
+
+// ComplaintImage model - stores image references
+model ComplaintImage {
+  id          String   @id @default(uuid())
+  filename    String   // Stored filename
+  originalName String  // Original uploaded filename
+  mimeType    String   // File MIME type
+  size        Int      // File size in bytes
+  path        String   // Relative path to file
+  createdAt   DateTime @default(now())
+
+  // Relations
+  complaintId String
+  complaint   Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+
+  @@index([complaintId])
+}
+
+// Password Reset Token model
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+}
